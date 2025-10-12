@@ -15,6 +15,7 @@ import {
   setDoc,
   deleteDoc,
   writeBatch,
+  getDoc,
 } from "firebase/firestore";
 import {
   ref,
@@ -72,6 +73,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const [status, setStatus] = useState("Ready to start");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -109,9 +111,16 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       setFriendRequests(requestsList);
     });
 
+    const sentRequestsQuery = query(collection(firestore, 'users', user.uid, 'sentRequests'));
+    const sentRequestsUnsubscribe = onSnapshot(sentRequestsQuery, (snapshot) => {
+      const sentToList = snapshot.docs.map(doc => doc.id);
+      setSentRequests(sentToList);
+    });
+
     return () => {
       friendsUnsubscribe();
       requestsUnsubscribe();
+      sentRequestsUnsubscribe();
     }
   }, [user, firestore]);
 
@@ -126,6 +135,23 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
 
   const sendFriendRequest = async (toUser: User) => {
     if (!firestore || !user || !profile) return;
+
+    // Validate: no self-request
+    if (toUser.uid === user.uid) {
+        toast({ variant: "destructive", title: "Cannot add yourself" });
+        return;
+    }
+    // Validate: no existing friend
+    if (friends.some(friend => friend.uid === toUser.uid)) {
+        toast({ variant: "destructive", title: "Already friends" });
+        return;
+    }
+    // Validate: no duplicate request
+    if (sentRequests.includes(toUser.uid)) {
+        toast({ variant: "destructive", title: "Request already sent" });
+        return;
+    }
+    
     const batch = writeBatch(firestore);
 
     const requestRef = doc(firestore, 'users', toUser.uid, 'requests', user.uid);
@@ -393,7 +419,10 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                 <div className="space-y-2">
                   {searchResults.map(u => (
                     <div key={u.uid} className="flex justify-between items-center">
-                      <p>{u.username}</p>
+                      <div>
+                        <p className="font-semibold">{u.fullname}</p>
+                        <p className="text-sm text-muted-foreground">@{u.username}</p>
+                      </div>
                       <Button size="sm" onClick={() => sendFriendRequest(u)}>Send Request</Button>
                     </div>
                   ))}
@@ -454,8 +483,11 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                 <h2 className="font-semibold">{activeChat.username}</h2>
               </div>
               <div>
-                <Button variant="ghost" size="icon" onClick={createCall} disabled={!micActive}>
+                <Button variant="ghost" size="icon" onClick={startMic} disabled={micActive}>
                   <Mic />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={createCall} disabled={!micActive || inCall}>
+                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone-call"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><path d="M14.05 2a9 9 0 0 1 8 7.94"/><path d="M14.05 6A5 5 0 0 1 18 10"/></svg>
                 </Button>
                 <Button variant="ghost" size="icon" onClick={hangUp} disabled={!inCall}>
                   <PhoneOff />
