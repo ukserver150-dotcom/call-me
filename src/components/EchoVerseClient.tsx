@@ -609,3 +609,5 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     </>
   );
 }
+
+    
