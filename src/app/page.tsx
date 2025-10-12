@@ -4,13 +4,15 @@ import { useUser } from "@/firebase/auth/use-user";
 import EchoVerseClient from "@/components/EchoVerseClient";
 import Onboarding from "@/components/Onboarding";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { SidebarProvider } from "@/components/ui/sidebar";
+
 
 export default function Home() {
   const { user, loading, profile } = useUser();
 
   if (loading) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 lg:p-24 bg-background font-sans">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background font-sans">
         <LoadingSpinner />
       </main>
     );
@@ -26,9 +28,9 @@ export default function Home() {
 
   if (user && profile) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 lg:p-24 bg-background font-sans">
+      <SidebarProvider>
         <EchoVerseClient user={user} profile={profile} />
-      </main>
+      </SidebarProvider>
     );
   }
 
