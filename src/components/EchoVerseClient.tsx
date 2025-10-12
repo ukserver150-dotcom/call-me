@@ -13,29 +13,12 @@ import {
   doc,
   getDocs,
   where,
-  setDoc,
-  deleteDoc,
   writeBatch,
-  getDoc,
-  Query,
 } from "firebase/firestore";
-import {
-  ref,
-  set,
-  get,
-  onValue,
-  off,
-  push,
-  onChildAdded,
-  remove,
-  onDisconnect,
-} from "firebase/database";
 import { useFirestore } from "@/firebase/firestore/use-firestore";
 import { useDatabase } from "@/firebase/database/use-database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Mic, PhoneOff, Send, UserPlus, UserRoundPlus, Search, BellRing, Cog, PanelLeft, MessageSquare, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "./ui/separator";
@@ -52,6 +35,10 @@ import Settings from "./Settings";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarInset, SidebarFooter } from "./ui/sidebar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { LoadingSpinner } from "./LoadingSpinner";
+import { useCallStore } from "@/hooks/use-call-store";
+import CallModal from "./call/CallModal";
+import { Mic, Phone, PhoneOff, UserPlus, BellRing, Cog, PanelLeft, MessageSquare, Search } from "lucide-react";
+import { ref, onValue, off } from "firebase/database";
 
 
 interface Message {
@@ -61,22 +48,10 @@ interface Message {
   createdAt: Timestamp;
 }
 
-const servers = {
-  iceServers: [
-    {
-      urls: ["stun:stun.l.google.com:19302"],
-    },
-  ],
-  iceCandidatePoolSize: 10,
-};
-
 export default function EchoVerseClient({ user, profile }: { user: FirebaseUser, profile: User }) {
   const [activeChat, setActiveChat] = useState<Friend | null>(null);
-  const [micActive, setMicActive] = useState(false);
-  const [inCall, setInCall] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [status, setStatus] = useState("Ready to start");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<string[]>([]);
@@ -88,21 +63,27 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const { toast } = useToast();
   const firestore = useFirestore();
   const db = useDatabase();
-
-  const pc = useRef<RTCPeerConnection | null>(null);
-  const localStream = useRef<MediaStream | null>(null);
-  const remoteStream = useRef<MediaStream | null>(null);
-  const localAudioRef = useRef<HTMLAudioElement>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const { startCall, setIncomingCall } = useCallStore();
 
   const roomId = activeChat ? [user.uid, activeChat.uid].sort().join('_') : null;
 
+  // Listen for incoming calls
   useEffect(() => {
     if (!user || !db) return;
-    const presenceRef = ref(db, `/presence/${user.uid}`);
-    set(presenceRef, { online: true });
-    onDisconnect(presenceRef).set({ online: false, lastSeen: serverTimestamp() });
-  }, [user, db]);
+    const userCallsRef = ref(db, `calls/${user.uid}`);
+    const listener = onValue(userCallsRef, (snapshot) => {
+        const callData = snapshot.val();
+        if (snapshot.exists() && callData.status === 'ringing' && callData.calleeId === user.uid) {
+            setIncomingCall({
+                roomId: callData.roomId,
+                caller: callData.caller,
+                status: 'ringing'
+            });
+        }
+    });
+    return () => off(userCallsRef, 'value', listener);
+  }, [user, db, setIncomingCall]);
+
 
   useEffect(() => {
     if (!user || !firestore) return;
@@ -237,153 +218,17 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     await batch.commit();
     toast({ title: accept ? "Friend Added" : "Request Declined" });
   };
-
-
-  const hangUp = useCallback(async () => {
-    if (pc.current) {
-      pc.current.getSenders().forEach((sender) => {
-        if (sender.track) {
-          sender.track.stop();
-        }
-      });
-      pc.current.close();
-      pc.current = null;
-    }
-    if (roomId && db) {
-      const callRef = ref(db, `calls/${roomId}`);
-      try {
-        await remove(callRef);
-      } catch (error) {
-        console.error("Error removing call room from DB:", error);
-      }
-    }
-    if (localStream.current) {
-        localStream.current.getTracks().forEach(track => track.stop());
-        localStream.current = null;
-    }
-    if (localAudioRef.current) localAudioRef.current.srcObject = null;
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
-    setMicActive(false);
-    setInCall(false);
-    setStatus("Call ended");
-    toast({ title: "Call Ended", description: "The connection has been closed." });
-  }, [roomId, db, toast]);
-
-  useEffect(() => {
-    return () => {
-      if (inCall) {
-        hangUp();
-      }
-    };
-  }, [inCall, hangUp]);
-
-  const startMic = async () => {
-    if (localStream.current) return;
-    try {
-      localStream.current = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-      if (localAudioRef.current) {
-        localAudioRef.current.srcObject = localStream.current;
-      }
-      setMicActive(true);
-      setStatus("Microphone is on");
-      toast({ title: "Microphone Active" });
-    } catch (error) {
-      console.error("Error accessing media devices.", error);
-      setStatus("Error: Could not access microphone.");
-      toast({ variant: "destructive", title: "Microphone Error", description: "Could not access your microphone. Please check permissions." });
-    }
-  };
-
-  const setupWebRTC = useCallback((currentRoomId: string) => {
-    if (!localStream.current) {
-        setStatus("Error: Mic not started.");
-        toast({variant: "destructive", title: "WebRTC Error", description: "Microphone not started."});
-        return;
-    }
-    pc.current = new RTCPeerConnection(servers);
-    localStream.current.getTracks().forEach((track) => {
-      pc.current?.addTrack(track, localStream.current!);
-    });
-    pc.current.ontrack = (event) => {
-      remoteStream.current = event.streams[0];
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = remoteStream.current;
-      }
-    };
-    pc.current.oniceconnectionstatechange = () => {
-        if(pc.current?.iceConnectionState === 'connected') {
-            setStatus(`Connected in call with ${activeChat?.username}`);
-            setInCall(true);
-            toast({ title: "Connected!", description: "You are now connected." });
-        }
-    }
-  }, [toast, activeChat]);
   
-
-  const createCall = async () => {
-    if (!micActive || !localStream.current) {
-      toast({ variant: "destructive", title: "Mic not active", description: "Please start your microphone first." });
-      return;
-    }
-    if (!roomId || !db) return;
-    setupWebRTC(roomId);
-    if (!pc.current) return;
-    const callRef = ref(db, `calls/${roomId}`);
-    const offerCandidates = ref(db, `calls/${roomId}/callerCandidates`);
-    const answerCandidates = ref(db, `calls/${roomId}/calleeCandidates`);
-    pc.current.onicecandidate = (event) => {
-        event.candidate && push(offerCandidates, event.candidate.toJSON());
-    };
-    const offerDescription = await pc.current.createOffer();
-    await pc.current.setLocalDescription(offerDescription);
-    const offer = { sdp: offerDescription.sdp, type: offerDescription.type };
-    await set(ref(db, `calls/${roomId}/offer`), offer);
-    onValue(ref(db, `calls/${roomId}/answer`), (snapshot) => {
-        const answer = snapshot.val();
-        if (answer && !pc.current!.currentRemoteDescription) {
-            pc.current!.setRemoteDescription(new RTCSessionDescription(answer));
-        }
+  const handleStartCall = () => {
+    if (!activeChat) return;
+    const roomId = [user.uid, activeChat.uid].sort().join('_');
+    startCall({
+      caller: profile,
+      callee: activeChat,
+      roomId: roomId,
+      status: 'outgoing'
     });
-    onChildAdded(answerCandidates, (snapshot) => {
-        const candidate = new RTCIceCandidate(snapshot.val());
-        pc.current!.addIceCandidate(candidate);
-    });
-    setStatus(`Calling ${activeChat?.username}...`);
-    toast({ title: "Calling", description: `Waiting for ${activeChat?.username} to answer.` });
-  };
-
-  const joinCall = async (callRoomId: string) => {
-    if (!micActive || !localStream.current) {
-      toast({ variant: "destructive", title: "Mic not active", description: "Please start your microphone first." });
-      return;
-    }
-    if (!db) return;
-    setupWebRTC(callRoomId);
-    if (!pc.current) return;
-    const callRef = ref(db, `calls/${callRoomId}`);
-    const callSnapshot = await get(callRef);
-    if (!callSnapshot.exists()) {
-      setStatus("Error: Call does not exist.");
-      toast({ variant: "destructive", title: "Invalid Call", description: "Could not find call to join." });
-      return;
-    }
-    const offerCandidates = ref(db, `calls/${callRoomId}/callerCandidates`);
-    const answerCandidates = ref(db, `calls/${callRoomId}/calleeCandidates`);
-    pc.current.onicecandidate = (event) => {
-        event.candidate && push(answerCandidates, event.candidate.toJSON());
-    };
-    const offerDescription = callSnapshot.val().offer;
-    await pc.current.setRemoteDescription(new RTCSessionDescription(offerDescription));
-    const answerDescription = await pc.current.createAnswer();
-    await pc.current.setLocalDescription(answerDescription);
-    const answer = { type: answerDescription.type, sdp: answerDescription.sdp };
-    await set(ref(db, `calls/${callRoomId}/answer`), answer);
-    onChildAdded(offerCandidates, (snapshot) => {
-        const candidate = new RTCIceCandidate(snapshot.val());
-        pc.current!.addIceCandidate(candidate);
-    });
-    setStatus(`Joining call with ${activeChat?.username}`);
-  };
+  }
 
   useEffect(() => {
     if (!roomId || !firestore) {
@@ -411,6 +256,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   
   return (
     <>
+      <CallModal currentUser={profile}/>
+
       <Sidebar side="left" collapsible="icon" variant="sidebar">
         <SidebarHeader>
              <div className="flex items-center justify-between">
@@ -553,29 +400,13 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                   </div>
                   <div className="flex items-center justify-end gap-2">
                     <TooltipProvider>
-                       <Tooltip>
-                          <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={startMic} disabled={micActive}>
-                                <Mic />
-                              </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Start Microphone</p></TooltipContent>
-                        </Tooltip>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={createCall} disabled={!micActive || inCall}>
+                                <Button variant="ghost" size="icon" onClick={handleStartCall}>
                                     <Phone />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent><p>Start Call</p></TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={hangUp} disabled={!inCall}>
-                                    <PhoneOff />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent><p>End Call</p></TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                   </div>
@@ -627,11 +458,6 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
             )}
         </div>
       </SidebarInset>
-
-       <audio ref={localAudioRef} autoPlay playsInline muted className="hidden"></audio>
-       <audio ref={remoteAudioRef} autoPlay playsInline className="hidden"></audio>
     </>
   );
 }
-
-    
