@@ -5,10 +5,19 @@ import EchoVerseClient from "@/components/EchoVerseClient";
 import Onboarding from "@/components/Onboarding";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 
 export default function Home() {
   const { user, loading, profile } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, createContext, useContext } from "react";
-import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/firebase/auth/use-auth";
 import { useFirestore } from "@/firebase/firestore/use-firestore";
@@ -30,14 +30,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user) {
         setUser(user);
       } else {
-        try {
-          const userCredential = await signInAnonymously(auth);
-          setUser(userCredential.user);
-        } catch (error) {
-          console.error("Anonymous sign-in failed:", error);
-          setUser(null);
-          setProfile(null);
-        }
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
       }
     });
 
@@ -46,7 +41,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!user || !firestore) {
-      if (!user) setLoading(false);
+      if (!user) {
+        setProfile(null);
+        setLoading(false);
+      }
       return;
     }
     
