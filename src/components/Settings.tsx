@@ -17,9 +17,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useStorage } from "@/firebase/storage/use-storage";
 import { useFirestore } from "@/firebase/firestore/use-firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { Switch } from "./ui/switch";
+import { useAuth } from "@/firebase/auth/use-auth";
+
 
 const accountSchema = z.object({
     fullname: z.string().min(1, "Full name is required"),
@@ -33,8 +35,11 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
   const { toast } = useToast();
   const storage = useStorage();
   const firestore = useFirestore();
+  const auth = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isAvatarPending, startAvatarTransition] = useTransition();
+  const [isAccountPending, startAccountTransition] = useTransition();
+
 
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
@@ -52,7 +57,7 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
     const file = event.target.files?.[0];
     if (!file || !storage || !firestore) return;
 
-    startTransition(async () => {
+    startAvatarTransition(async () => {
         try {
             const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`);
             await uploadBytes(storageRef, file);
@@ -70,8 +75,48 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
   };
 
   const onAccountSubmit = (values: AccountFormValues) => {
-    console.log("Account update:", values);
-    toast({title: "Coming soon!", description: "Account updates are not yet implemented."})
+    startAccountTransition(async () => {
+        if (!firestore) return;
+
+        try {
+            const userDocRef = doc(firestore, "users", user.uid);
+            const updates: Partial<User> = {};
+
+            if (values.fullname !== profile.fullname) {
+                updates.fullname = values.fullname;
+            }
+
+            if (values.username !== profile.username) {
+                // Check for username uniqueness
+                const usersRef = collection(firestore, "users");
+                const q = query(usersRef, where("username", "==", values.username));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    form.setError("username", { message: "This username is already taken." });
+                    return;
+                }
+                updates.username = values.username;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                await updateDoc(userDocRef, updates);
+                toast({ title: "Account updated successfully!" });
+            } else {
+                toast({ title: "No changes to save." });
+            }
+
+        } catch (error) {
+            console.error("Error updating account:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update account." });
+        }
+    });
+  }
+
+  const handleSignOut = async () => {
+    if (auth) {
+        await auth.signOut();
+        toast({ title: "Signed Out", description: "You have been signed out." });
+    }
   }
 
   return (
@@ -102,8 +147,8 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                 <AvatarImage src={profile.avatarUrl || ''} />
                                 <AvatarFallback>{profile.fullname.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            <Button onClick={handleAvatarClick} disabled={isPending}>
-                                {isPending ? "Uploading..." : "Change Picture"}
+                            <Button onClick={handleAvatarClick} disabled={isAvatarPending}>
+                                {isAvatarPending ? "Uploading..." : "Change Picture"}
                             </Button>
                             <input
                                 type="file"
@@ -136,7 +181,7 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                     <FormItem>
                                     <FormLabel>Full Name</FormLabel>
                                     <FormControl>
-                                        <Input {...field} />
+                                        <Input {...field} disabled={isAccountPending} />
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
@@ -149,17 +194,21 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                     <FormItem>
                                     <FormLabel>Username</FormLabel>
                                     <FormControl>
-                                        <Input {...field} />
+                                        <Input {...field} disabled={isAccountPending} />
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
                                 )}
                                 />
-                                <Button type="submit">Save Changes</Button>
+                                <Button type="submit" disabled={isAccountPending}>
+                                    {isAccountPending ? "Saving..." : "Save Changes"}
+                                </Button>
                             </form>
                         </Form>
-                        <div className="mt-8">
-                            <Button variant="destructive">Sign Out</Button>
+                        <div className="mt-8 pt-8 border-t">
+                            <h3 className="text-lg font-medium text-destructive">Danger Zone</h3>
+                             <p className="text-sm text-muted-foreground mb-4">Signing out will end your current session.</p>
+                            <Button variant="destructive" onClick={handleSignOut}>Sign Out</Button>
                         </div>
                     </CardContent>
                 </Card>

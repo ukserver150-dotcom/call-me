@@ -430,12 +430,15 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       {/* Sidebar */}
       <div className="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-                <Avatar>
+            <div className="flex items-center gap-4">
+                <Avatar className="h-10 w-10">
                     <AvatarImage src={profile.avatarUrl || undefined} />
                     <AvatarFallback>{profile.fullname.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <h2 className="font-semibold">{profile.username}</h2>
+                <div>
+                    <p className="font-semibold text-base">{profile.fullname}</p>
+                    <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                </div>
             </div>
             <div className="flex items-center">
               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
