@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
@@ -7,15 +8,29 @@ import { Mic, MicOff, PhoneOff, Speaker, Volume2, Waves } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { useCallStore, type Call } from '@/hooks/use-call-store';
+import { useToast } from '@/hooks/use-toast';
 
 const InCallView = ({ call }: { call: Call }) => {
     const { endCall } = useCallStore();
+    const { toast } = useToast();
     const [isMuted, setIsMuted] = useState(false);
     const [isSpeaker, setIsSpeaker] = useState(false);
     const [callDuration, setCallDuration] = useState(0);
 
-    const remoteAudioRef = useCallStore((s) => s.remoteAudioRef);
-    const localAudioRef = useCallStore((s) => s.localAudioRef);
+    const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+    const localAudioRef = useRef<HTMLAudioElement | null>(null);
+
+    const callStore = useCallStore();
+
+    useEffect(() => {
+        if (callStore.localStream && localAudioRef.current) {
+            localAudioRef.current.srcObject = callStore.localStream;
+        }
+        if (callStore.remoteStream && remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = callStore.remoteStream;
+        }
+    }, [callStore.localStream, callStore.remoteStream]);
+
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -54,6 +69,8 @@ const InCallView = ({ call }: { call: Call }) => {
         setIsSpeaker(!isSpeaker);
     };
 
+    const otherUser = call.caller.uid === callStore.call?.caller.uid ? call.callee : call.caller;
+
     return (
         <motion.div
             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm"
@@ -63,10 +80,10 @@ const InCallView = ({ call }: { call: Call }) => {
         >
             <div className="bg-card p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center w-full max-w-sm">
                 <Avatar className="w-28 h-28 mb-4 border-4 border-primary">
-                    <AvatarImage src={call.callee.avatarUrl || ''} />
-                    <AvatarFallback>{call.callee.fullname.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={otherUser.avatarUrl || ''} />
+                    <AvatarFallback>{otherUser.fullname.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <h2 className="text-2xl font-bold">{call.callee.fullname}</h2>
+                <h2 className="text-2xl font-bold">{otherUser.fullname}</h2>
                 <p className="text-muted-foreground">{formatDuration(callDuration)}</p>
 
                 <div className="flex justify-center items-center my-8 h-10">
@@ -77,7 +94,7 @@ const InCallView = ({ call }: { call: Call }) => {
                     <Button variant="ghost" size="icon" className="w-16 h-16 rounded-full bg-card-foreground/10" onClick={toggleMute}>
                         {isMuted ? <MicOff /> : <Mic />}
                     </Button>
-                    <Button variant="destructive" size="icon" className="w-16 h-16 rounded-full" onClick={endCall}>
+                    <Button variant="destructive" size="icon" className="w-16 h-16 rounded-full" onClick={() => endCall()}>
                         <PhoneOff />
                     </Button>
                     <Button variant="ghost" size="icon" className="w-16 h-16 rounded-full bg-card-foreground/10" onClick={toggleSpeaker}>

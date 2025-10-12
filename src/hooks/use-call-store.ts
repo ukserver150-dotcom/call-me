@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { type User } from '@/lib/firebase/schema';
 import { getDatabase, ref, set, onValue, off, remove, push, get, child } from 'firebase/database';
@@ -28,6 +27,7 @@ interface CallState {
     remoteStream: MediaStream | null;
     localAudioRef: MutableRefObject<HTMLAudioElement | null>;
     remoteAudioRef: MutableRefObject<HTMLAudioElement | null>;
+    ringtone: HTMLAudioElement | null;
     startCall: (callData: Omit<Call, 'status'> & { status: 'outgoing' }) => void;
     answerCall: (currentUser: User) => void;
     declineCall: () => void;
@@ -53,10 +53,17 @@ export const useCallStore = create<CallState>((set, get) => ({
     remoteStream: null,
     localAudioRef: { current: null },
     remoteAudioRef: { current: null },
+    ringtone: null,
 
     setIncomingCall: (callData) => {
         if(get().call || get().incomingCall) return;
         set({ incomingCall: callData });
+        if (callData) {
+            const audio = new Audio('/audio/ringtone.mp3');
+            audio.loop = true;
+            audio.play();
+            set({ ringtone: audio });
+        }
     },
     
     initPeerConnection: () => {
@@ -118,7 +125,7 @@ export const useCallStore = create<CallState>((set, get) => ({
             await set(child(roomRef, 'offer'), offer);
 
             onValue(child(roomRef, 'answer'), async (snapshot) => {
-                if (snapshot.exists()) {
+                if (snapshot.exists() && !pc.currentRemoteDescription) {
                     const answerDescription = new RTCSessionDescription(snapshot.val());
                     await pc.setRemoteDescription(answerDescription);
                     set({ call: { ...callData, status: 'connected' } });
@@ -148,8 +155,11 @@ export const useCallStore = create<CallState>((set, get) => ({
     },
 
     answerCall: async (currentUser) => {
-        const { incomingCall } = get();
+        const { incomingCall, ringtone } = get();
         if (!incomingCall) return;
+
+        ringtone?.pause();
+        set({ ringtone: null });
 
         const { toast } = useToast();
         try {
@@ -217,9 +227,12 @@ export const useCallStore = create<CallState>((set, get) => ({
     },
     
     declineCall: () => {
-        const { incomingCall, call } = get();
+        const { incomingCall, call, ringtone } = get();
         const db = getDatabase();
         const callToDecline = incomingCall || call;
+        
+        ringtone?.pause();
+        set({ ringtone: null });
 
         if (!callToDecline) return;
 
@@ -235,6 +248,7 @@ export const useCallStore = create<CallState>((set, get) => ({
     endCall: (notifyRoom = true) => {
         get().peerConnection?.close();
         get().localStream?.getTracks().forEach(track => track.stop());
+        get().ringtone?.pause();
         
         const { call } = get();
         if (call && notifyRoom) {
@@ -255,6 +269,7 @@ export const useCallStore = create<CallState>((set, get) => ({
             peerConnection: null,
             localStream: null,
             remoteStream: null,
+            ringtone: null,
         });
         if(get().localAudioRef.current) get().localAudioRef.current!.srcObject = null;
         if(get().remoteAudioRef.current) get().remoteAudioRef.current!.srcObject = null;

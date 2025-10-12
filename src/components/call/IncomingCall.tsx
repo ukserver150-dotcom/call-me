@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { useCallStore, type Call } from '@/hooks/use-call-store';
 import { type User } from '@/lib/firebase/schema';
+import { useEffect } from 'react';
 
 const IncomingCall = ({ call, currentUser }: { call: Call, currentUser: User }) => {
     const { answerCall, declineCall } = useCallStore();
@@ -28,10 +29,14 @@ const IncomingCall = ({ call, currentUser }: { call: Call, currentUser: User }) 
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         >
             <div className="flex items-center space-x-4">
-                <Avatar className="w-16 h-16">
-                    <AvatarImage src={call.caller.avatarUrl || ''} />
-                    <AvatarFallback>{call.caller.fullname.charAt(0)}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                    <Avatar className="w-16 h-16">
+                        <AvatarImage src={call.caller.avatarUrl || ''} />
+                        <AvatarFallback>{call.caller.fullname.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                     <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-pulse"></div>
+                     <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                </div>
                 <div>
                     <h3 className="text-lg font-bold">{call.caller.fullname}</h3>
                     <p className="text-muted-foreground">Incoming call...</p>
