@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -17,7 +18,6 @@ import {
   writeBatch,
   getDoc,
   Query,
-  or,
 } from "firebase/firestore";
 import {
   ref,
@@ -140,21 +140,45 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       };
       setIsSearching(true);
       const usersRef = collection(firestore, "users");
-      const q = query(
+      const lowerCaseQuery = searchQuery.toLowerCase();
+  
+      // Query for username
+      const usernameQuery = query(
         usersRef,
-        or(
-          where("username", ">=", searchQuery),
-          where("username", "<=", searchQuery + "\uf8ff"),
-          where("fullname", ">=", searchQuery),
-          where("fullname", "<=", searchQuery + "\uf8ff")
-        )
+        where("username", ">=", lowerCaseQuery),
+        where("username", "<=", lowerCaseQuery + "\uf8ff")
       );
+  
+      // Query for fullname
+      const fullnameQuery = query(
+        usersRef,
+        where("fullname", ">=", searchQuery),
+        where("fullname", "<=", searchQuery + "\uf8ff")
+      );
+  
       try {
-        const querySnapshot = await getDocs(q);
-        const users = querySnapshot.docs
-          .map(doc => doc.data() as User)
-          .filter(u => u.uid !== user.uid);
-        setSearchResults(users);
+        const [usernameSnapshot, fullnameSnapshot] = await Promise.all([
+          getDocs(usernameQuery),
+          getDocs(fullnameQuery),
+        ]);
+  
+        const usersMap = new Map<string, User>();
+  
+        usernameSnapshot.docs.forEach(doc => {
+          const userData = doc.data() as User;
+          if (userData.uid !== user.uid) {
+            usersMap.set(userData.uid, userData);
+          }
+        });
+  
+        fullnameSnapshot.docs.forEach(doc => {
+          const userData = doc.data() as User;
+          if (userData.uid !== user.uid) {
+            usersMap.set(userData.uid, userData);
+          }
+        });
+  
+        setSearchResults(Array.from(usersMap.values()));
       } catch (error) {
         console.error("Error searching for users:", error);
         toast({ variant: "destructive", title: "Search Error", description: "Could not perform search." });
@@ -609,3 +633,5 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     </>
   );
 }
+
+    
