@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -92,16 +93,16 @@ export default function SignupPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="fullname"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                  <FormItem className="relative">
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="Full Name" {...field} id="fullname" className="peer placeholder-transparent"/>
                     </FormControl>
+                    <FormLabel htmlFor="fullname" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Full Name</FormLabel>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -110,11 +111,11 @@ export default function SignupPage() {
                 control={form.control}
                 name="username"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
+                  <FormItem className="relative">
                     <FormControl>
-                      <Input placeholder="john.doe" {...field} />
+                      <Input placeholder="Username" {...field} id="username" className="peer placeholder-transparent"/>
                     </FormControl>
+                     <FormLabel htmlFor="username" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Username</FormLabel>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -123,11 +124,11 @@ export default function SignupPage() {
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormItem className="relative">
                     <FormControl>
-                        <Input placeholder="name@example.com" {...field} />
+                        <Input placeholder="name@example.com" {...field} id="email" className="peer placeholder-transparent"/>
                     </FormControl>
+                    <FormLabel htmlFor="email" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Email</FormLabel>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -136,11 +137,11 @@ export default function SignupPage() {
                 control={form.control}
                 name="password"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormItem className="relative">
                     <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input type="password" placeholder="••••••••" {...field} id="password" className="peer placeholder-transparent"/>
                     </FormControl>
+                    <FormLabel htmlFor="password" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Password</FormLabel>
                     <FormMessage />
                     </FormItem>
                 )}

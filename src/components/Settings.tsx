@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRef, useState, useTransition } from "react";
@@ -175,17 +176,17 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                     </CardHeader>
                     <CardContent>
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onAccountSubmit)} className="space-y-4">
+                            <form onSubmit={form.handleSubmit(onAccountSubmit)} className="space-y-6">
                                 <FormField
                                 control={form.control}
                                 name="fullname"
                                 render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Full Name</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} disabled={isAccountPending} />
-                                    </FormControl>
-                                    <FormMessage />
+                                    <FormItem className="relative">
+                                        <FormControl>
+                                            <Input placeholder="Full Name" {...field} id="fullName" className="peer placeholder-transparent" disabled={isAccountPending}/>
+                                        </FormControl>
+                                        <FormLabel htmlFor="fullName" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Full Name</FormLabel>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                                 />
@@ -193,12 +194,12 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                 control={form.control}
                                 name="username"
                                 render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Username</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} disabled={isAccountPending} />
-                                    </FormControl>
-                                    <FormMessage />
+                                    <FormItem className="relative">
+                                        <FormControl>
+                                            <Input placeholder="Username" {...field} id="username" className="peer placeholder-transparent" disabled={isAccountPending}/>
+                                        </FormControl>
+                                        <FormLabel htmlFor="username" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Username</FormLabel>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                                 />

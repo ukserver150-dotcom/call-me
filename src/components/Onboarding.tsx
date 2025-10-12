@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -76,16 +77,16 @@ export default function Onboarding({ user }: { user: FirebaseUser }) {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="fullname"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                <FormItem className="relative">
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input placeholder="Full Name" {...field} id="fullName" className="peer placeholder-transparent" />
                   </FormControl>
+                  <FormLabel htmlFor="fullName" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Full Name</FormLabel>
                   <FormMessage />
                 </FormItem>
               )}
@@ -94,11 +95,11 @@ export default function Onboarding({ user }: { user: FirebaseUser }) {
               control={form.control}
               name="username"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
+                <FormItem className="relative">
                   <FormControl>
-                    <Input placeholder="john.doe" {...field} />
+                    <Input placeholder="Username" {...field} id="username" className="peer placeholder-transparent"/>
                   </FormControl>
+                  <FormLabel htmlFor="username" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Username</FormLabel>
                   <FormMessage />
                 </FormItem>
               )}
