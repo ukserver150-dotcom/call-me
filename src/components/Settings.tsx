@@ -95,7 +95,7 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                 const q = query(usersRef, where("username", "==", values.username));
                 const querySnapshot = await getDocs(q);
                 if (!querySnapshot.empty) {
-                    form.setError("username", { message: "This username is already taken." });
+                    form.setError("username", { message: "Username already taken" });
                     return;
                 }
                 updates.username = values.username;
