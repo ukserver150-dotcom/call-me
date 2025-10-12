@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID."
+        },
+        "fullname": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's username."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the user was created."
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "The URL of the user's avatar."
+        }
+      },
+      "required": ["uid", "fullname", "username", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "A user's profile information."
+    }
+  }
+}
