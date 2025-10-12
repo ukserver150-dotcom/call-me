@@ -396,8 +396,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                         <AvatarFallback>{profile.fullname.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="text-sm">
-                        <p className="font-semibold text-sidebar-primary-foreground">{profile.fullname}</p>
-                        <p className="text-xs text-sidebar-primary-foreground/80">@{profile.username}</p>
+                        <p className="font-semibold text-base text-sidebar-primary-foreground">{profile.fullname}</p>
+                        <p className="text-sm text-sidebar-primary-foreground/80">@{profile.username}</p>
                     </div>
                 </div>
                 <Button variant="ghost" size="icon" className="md:hidden"><PanelLeft /></Button>
@@ -435,7 +435,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                                   <AvatarFallback>{u.fullname.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-semibold">{u.fullname}</p>
+                                  <p className="font-semibold text-base">{u.fullname}</p>
                                   <p className="text-sm text-muted-foreground">@{u.username}</p>
                                 </div>
                               </div>
@@ -609,5 +609,3 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     </>
   );
 }
-
-    
