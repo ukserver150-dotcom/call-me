@@ -35,7 +35,7 @@ import { useDatabase } from "@/firebase/database/use-database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Mic, PhoneOff, Video, VideoOff, Send, LogIn, PlusCircle, UserPlus, Users, Search, Bell, SettingsIcon } from "lucide-react";
+import { Mic, PhoneOff, Video, VideoOff, Send, LogIn, PlusCircle, UserRoundPlus, Users, Search, BellRing, Cog } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "./ui/separator";
@@ -444,7 +444,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-9 h-9">
-                    <SettingsIcon className="w-5 h-5"/>
+                    <Cog className="w-5 h-5"/>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl w-full">
@@ -454,7 +454,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-9 h-9">
-                    <UserPlus className="w-5 h-5"/>
+                    <UserRoundPlus className="w-5 h-5"/>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -481,7 +481,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
               <Dialog>
                   <DialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="relative w-9 h-9">
-                          <Bell className="w-5 h-5"/>
+                          <BellRing className="w-5 h-5"/>
                           {friendRequests.length > 0 && <Badge className="absolute top-0 right-0 h-4 w-4 p-0 justify-center">{friendRequests.length}</Badge>}
                       </Button>
                   </DialogTrigger>
