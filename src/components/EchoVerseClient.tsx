@@ -429,7 +429,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     <div className="flex h-screen w-screen bg-gray-100 dark:bg-gray-900">
       {/* Sidebar */}
       <div className="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 shadow-sm">
             <div className="flex items-center gap-4">
                 <Avatar className="h-10 w-10">
                     <AvatarImage src={profile.avatarUrl || undefined} />
@@ -443,8 +443,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
             <div className="flex items-center">
               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <SettingsIcon />
+                  <Button variant="ghost" size="icon" className="w-9 h-9">
+                    <SettingsIcon className="w-5 h-5"/>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl w-full">
@@ -453,8 +453,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
               </Dialog>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <UserPlus />
+                  <Button variant="ghost" size="icon" className="w-9 h-9">
+                    <UserPlus className="w-5 h-5"/>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -480,8 +480,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
               </Dialog>
               <Dialog>
                   <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="relative">
-                          <Bell />
+                      <Button variant="ghost" size="icon" className="relative w-9 h-9">
+                          <Bell className="w-5 h-5"/>
                           {friendRequests.length > 0 && <Badge className="absolute top-0 right-0 h-4 w-4 p-0 justify-center">{friendRequests.length}</Badge>}
                       </Button>
                   </DialogTrigger>
@@ -524,7 +524,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       <div className="w-3/4 flex flex-col">
         {activeChat ? (
           <>
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 shadow-sm">
               <div className="flex items-center gap-3">
                 <Avatar>
                   <AvatarImage src={undefined} />
@@ -532,15 +532,15 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                 </Avatar>
                 <h2 className="font-semibold">{activeChat.username}</h2>
               </div>
-              <div>
-                <Button variant="ghost" size="icon" onClick={startMic} disabled={micActive}>
-                  <Mic />
+              <div className="flex items-center justify-end gap-3">
+                <Button variant="ghost" size="icon" onClick={startMic} disabled={micActive} className="w-9 h-9">
+                  <Mic className="w-5 h-5"/>
                 </Button>
-                <Button variant="ghost" size="icon" onClick={createCall} disabled={!micActive || inCall}>
-                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone-call"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><path d="M14.05 2a9 9 0 0 1 8 7.94"/><path d="M14.05 6A5 5 0 0 1 18 10"/></svg>
+                <Button variant="ghost" size="icon" onClick={createCall} disabled={!micActive || inCall} className="w-9 h-9">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone-call h-5 w-5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><path d="M14.05 2a9 9 0 0 1 8 7.94"/><path d="M14.05 6A5 5 0 0 1 18 10"/></svg>
                 </Button>
-                <Button variant="ghost" size="icon" onClick={hangUp} disabled={!inCall}>
-                  <PhoneOff />
+                <Button variant="ghost" size="icon" onClick={hangUp} disabled={!inCall} className="w-9 h-9">
+                  <PhoneOff className="w-5 h-5"/>
                 </Button>
               </div>
             </div>
