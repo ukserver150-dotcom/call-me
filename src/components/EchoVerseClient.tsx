@@ -35,7 +35,7 @@ import { useDatabase } from "@/firebase/database/use-database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Mic, PhoneOff, Video, VideoOff, Send, LogIn, PlusCircle, UserRoundPlus, Users, Search, BellRing, Cog, PanelLeft, MessageSquare, Phone } from "lucide-react";
+import { Mic, PhoneOff, Send, PlusCircle, UserRoundPlus, Search, BellRing, Cog, PanelLeft, MessageSquare, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "./ui/separator";
@@ -201,6 +201,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
         }
       });
       pc.current.close();
+      pc.current = null;
     }
     if (roomId && db) {
       const callRef = ref(db, `calls/${roomId}`);
@@ -209,6 +210,10 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       } catch (error) {
         console.error("Error removing call room from DB:", error);
       }
+    }
+    if (localStream.current) {
+        localStream.current.getTracks().forEach(track => track.stop());
+        localStream.current = null;
     }
     if (localAudioRef.current) localAudioRef.current.srcObject = null;
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
@@ -219,7 +224,6 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   }, [roomId, db, toast]);
 
   useEffect(() => {
-    pc.current = new RTCPeerConnection(servers);
     return () => {
       if (inCall) {
         hangUp();
@@ -228,6 +232,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   }, [inCall, hangUp]);
 
   const startMic = async () => {
+    if (localStream.current) return;
     try {
       localStream.current = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
       if (localAudioRef.current) {
@@ -244,11 +249,12 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   };
 
   const setupWebRTC = useCallback((currentRoomId: string) => {
-    if (!pc.current || !localStream.current) {
-        setStatus("Error: Mic not started or connection not ready.");
+    if (!localStream.current) {
+        setStatus("Error: Mic not started.");
         toast({variant: "destructive", title: "WebRTC Error", description: "Microphone not started."});
         return;
     }
+    pc.current = new RTCPeerConnection(servers);
     localStream.current.getTracks().forEach((track) => {
       pc.current?.addTrack(track, localStream.current!);
     });
@@ -269,7 +275,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   
 
   const createCall = async () => {
-    if (!micActive) {
+    if (!micActive || !localStream.current) {
       toast({ variant: "destructive", title: "Mic not active", description: "Please start your microphone first." });
       return;
     }
@@ -288,8 +294,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     onValue(ref(db, `calls/${roomId}/answer`), (snapshot) => {
         const answer = snapshot.val();
         if (answer && !pc.current!.currentRemoteDescription) {
-            const answerDescription = new RTCSessionDescription(answer);
-            pc.current!.setRemoteDescription(answerDescription);
+            pc.current!.setRemoteDescription(new RTCSessionDescription(answer));
         }
     });
     onChildAdded(answerCandidates, (snapshot) => {
@@ -301,7 +306,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   };
 
   const joinCall = async (callRoomId: string) => {
-    if (!micActive) {
+    if (!micActive || !localStream.current) {
       toast({ variant: "destructive", title: "Mic not active", description: "Please start your microphone first." });
       return;
     }
@@ -360,9 +365,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     <>
       <Sidebar side="left" collapsible="icon" variant="sidebar">
         <SidebarHeader>
-            <div className="flex items-center justify-between">
-                <Button variant="ghost" size="icon" className="md:hidden"><PanelLeft /></Button>
-                 <div className="flex items-center gap-2">
+             <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
                         <AvatarImage src={profile.avatarUrl || undefined} />
                         <AvatarFallback>{profile.fullname.charAt(0)}</AvatarFallback>
@@ -372,6 +376,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                         <p className="text-xs text-sidebar-primary-foreground/80">@{profile.username}</p>
                     </div>
                 </div>
+                <Button variant="ghost" size="icon" className="md:hidden"><PanelLeft /></Button>
             </div>
         </SidebarHeader>
 
@@ -380,7 +385,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="ghost" className="w-full justify-start">
-                    <Search className="mr-2"/> Search
+                    <UserRoundPlus className="mr-2"/> Add Friends
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -533,12 +538,6 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                           <p className="text-sm">{msg.text}</p>
                           <p className="text-xs text-right mt-1 opacity-70">{new Date(msg.createdAt?.toDate()).toLocaleTimeString()}</p>
                         </div>
-                         {msg.from === user.uid && (
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={profile.avatarUrl || undefined} />
-                            <AvatarFallback className="text-xs">{profile.fullname.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -559,15 +558,15 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                 </footer>
             </>
             ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-4">
                  <div className="flex items-center md:hidden">
                     <SidebarTrigger />
                  </div>
                 <div className="p-4 border rounded-full bg-muted">
                     <MessageSquare size={48} className="text-muted-foreground" />
                 </div>
-                <h2 className="text-2xl font-bold">Welcome to EchoVerse</h2>
-                <p className="text-muted-foreground">Select a friend from the sidebar to start a conversation.</p>
+                <h2 className="text-2xl font-bold">Welcome to EchoVerse!</h2>
+                <p className="text-muted-foreground max-w-md">Your real-time communication hub. Select a friend from the sidebar to start a conversation, or add new friends to begin your journey.</p>
             </div>
             )}
         </div>
