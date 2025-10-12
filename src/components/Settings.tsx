@@ -21,7 +21,6 @@ import { doc, updateDoc, collection, query, where, getDocs } from "firebase/fire
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { Switch } from "./ui/switch";
 import { useAuth } from "@/firebase/auth/use-auth";
-import { useTheme } from "@/hooks/use-theme";
 
 
 const accountSchema = z.object({
@@ -40,7 +39,6 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAvatarPending, startAvatarTransition] = useTransition();
   const [isAccountPending, startAccountTransition] = useTransition();
-  const { theme, setTheme } = useTheme();
 
 
   const form = useForm<AccountFormValues>({
@@ -135,7 +133,6 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                 <TabsTrigger value="profile" className="w-full justify-start">Profile</TabsTrigger>
                 <TabsTrigger value="account" className="w-full justify-start">Account</TabsTrigger>
                 <TabsTrigger value="privacy" className="w-full justify-start">Privacy</TabsTrigger>
-                <TabsTrigger value="theme" className="w-full justify-start">Theme</TabsTrigger>
             </TabsList>
             <TabsContent value="profile" className="mt-0 pl-6">
                 <Card className="border-0 shadow-none">
@@ -239,29 +236,6 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                 </span>
                             </Label>
                             <Switch id="friend-requests" defaultChecked />
-                        </div>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="theme" className="mt-0 pl-6">
-                 <Card className="border-0 shadow-none">
-                    <CardHeader>
-                        <CardTitle>Theme</CardTitle>
-                        <CardDescription>Choose your preferred theme.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="flex items-center justify-between">
-                             <Label htmlFor="dark-mode" className="flex flex-col space-y-1">
-                                <span>Dark Mode</span>
-                                <span className="font-normal leading-snug text-muted-foreground">
-                                    Toggle between light and dark themes.
-                                </span>
-                            </Label>
-                            <Switch 
-                                id="dark-mode" 
-                                checked={theme === 'dark'}
-                                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-                            />
                         </div>
                     </CardContent>
                 </Card>
