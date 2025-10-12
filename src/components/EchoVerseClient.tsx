@@ -35,7 +35,7 @@ import { useDatabase } from "@/firebase/database/use-database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Mic, PhoneOff, Send, PlusCircle, UserRoundPlus, Search, BellRing, Cog, PanelLeft, MessageSquare, Phone } from "lucide-react";
+import { Mic, PhoneOff, Send, UserPlus, UserRoundPlus, Search, BellRing, Cog, PanelLeft, MessageSquare, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "./ui/separator";
@@ -51,6 +51,7 @@ import { type User as FirebaseUser } from "firebase/auth";
 import Settings from "./Settings";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarInset, SidebarFooter } from "./ui/sidebar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 
 interface Message {
@@ -82,6 +83,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -129,25 +131,45 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       sentRequestsUnsubscribe();
     }
   }, [user, firestore]);
+  
+  useEffect(() => {
+    const handleSearch = async () => {
+      if (!firestore || !searchQuery) {
+        setSearchResults([]);
+        return;
+      };
+      setIsSearching(true);
+      const usersRef = collection(firestore, "users");
+      const q = query(
+        usersRef,
+        or(
+          where("username", ">=", searchQuery),
+          where("username", "<=", searchQuery + "\uf8ff"),
+          where("fullname", ">=", searchQuery),
+          where("fullname", "<=", searchQuery + "\uf8ff")
+        )
+      );
+      try {
+        const querySnapshot = await getDocs(q);
+        const users = querySnapshot.docs
+          .map(doc => doc.data() as User)
+          .filter(u => u.uid !== user.uid);
+        setSearchResults(users);
+      } catch (error) {
+        console.error("Error searching for users:", error);
+        toast({ variant: "destructive", title: "Search Error", description: "Could not perform search." });
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    
+    const debounceTimeout = setTimeout(() => {
+      handleSearch();
+    }, 500);
 
-  const handleSearch = async () => {
-    if (!firestore || !searchQuery) return;
-    const usersRef = collection(firestore, "users");
-    const q = query(
-      usersRef,
-      or(
-        where("username", ">=", searchQuery),
-        where("username", "<=", searchQuery + "\uf8ff"),
-        where("fullname", ">=", searchQuery),
-        where("fullname", "<=", searchQuery + "\uf8ff")
-      )
-    );
-    const querySnapshot = await getDocs(q);
-    const users = querySnapshot.docs
-      .map(doc => doc.data() as User)
-      .filter(u => u.uid !== user.uid);
-    setSearchResults(users);
-  };
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery, firestore, user.uid, toast]);
+
 
   const sendFriendRequest = async (toUser: User) => {
     if (!firestore || !user || !profile) return;
@@ -281,14 +303,15 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     }
     if (!roomId || !db) return;
     setupWebRTC(roomId);
+    if (!pc.current) return;
     const callRef = ref(db, `calls/${roomId}`);
     const offerCandidates = ref(db, `calls/${roomId}/callerCandidates`);
     const answerCandidates = ref(db, `calls/${roomId}/calleeCandidates`);
-    pc.current!.onicecandidate = (event) => {
+    pc.current.onicecandidate = (event) => {
         event.candidate && push(offerCandidates, event.candidate.toJSON());
     };
-    const offerDescription = await pc.current!.createOffer();
-    await pc.current!.setLocalDescription(offerDescription);
+    const offerDescription = await pc.current.createOffer();
+    await pc.current.setLocalDescription(offerDescription);
     const offer = { sdp: offerDescription.sdp, type: offerDescription.type };
     await set(ref(db, `calls/${roomId}/offer`), offer);
     onValue(ref(db, `calls/${roomId}/answer`), (snapshot) => {
@@ -312,6 +335,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     }
     if (!db) return;
     setupWebRTC(callRoomId);
+    if (!pc.current) return;
     const callRef = ref(db, `calls/${callRoomId}`);
     const callSnapshot = await get(callRef);
     if (!callSnapshot.exists()) {
@@ -321,13 +345,13 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     }
     const offerCandidates = ref(db, `calls/${callRoomId}/callerCandidates`);
     const answerCandidates = ref(db, `calls/${callRoomId}/calleeCandidates`);
-    pc.current!.onicecandidate = (event) => {
+    pc.current.onicecandidate = (event) => {
         event.candidate && push(answerCandidates, event.candidate.toJSON());
     };
     const offerDescription = callSnapshot.val().offer;
-    await pc.current!.setRemoteDescription(new RTCSessionDescription(offerDescription));
-    const answerDescription = await pc.current!.createAnswer();
-    await pc.current!.setLocalDescription(answerDescription);
+    await pc.current.setRemoteDescription(new RTCSessionDescription(offerDescription));
+    const answerDescription = await pc.current.createAnswer();
+    await pc.current.setLocalDescription(answerDescription);
     const answer = { type: answerDescription.type, sdp: answerDescription.sdp };
     await set(ref(db, `calls/${callRoomId}/answer`), answer);
     onChildAdded(offerCandidates, (snapshot) => {
@@ -385,7 +409,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="ghost" className="w-full justify-start">
-                    <UserRoundPlus className="mr-2"/> Add Friends
+                    <UserPlus className="mr-2"/> Add Friends
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -394,27 +418,35 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                   </DialogHeader>
                   <div className="flex gap-2">
                     <Input placeholder="Search by username or name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                    <Button onClick={handleSearch}><Search/></Button>
+                    <Button><Search/></Button>
                   </div>
-                  <ScrollArea className="h-64">
+                   <ScrollArea className="h-64">
                     <div className="space-y-4 py-4">
-                      {searchResults.map(u => (
-                        <div key={u.uid} className="flex justify-between items-center">
-                           <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={u.avatarUrl || undefined} />
-                                <AvatarFallback>{u.fullname.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-semibold">{u.fullname}</p>
-                                <p className="text-sm text-muted-foreground">@{u.username}</p>
-                              </div>
-                            </div>
-                          <Button size="sm" onClick={() => sendFriendRequest(u)} disabled={sentRequests.includes(u.uid) || friends.some(f => f.uid === u.uid)}>
-                            {sentRequests.includes(u.uid) ? 'Sent' : 'Add'}
-                          </Button>
+                      {isSearching ? (
+                        <div className="flex justify-center items-center h-full">
+                          <LoadingSpinner />
                         </div>
-                      ))}
+                      ) : searchResults.length > 0 ? (
+                        searchResults.map(u => (
+                          <div key={u.uid} className="flex justify-between items-center">
+                             <div className="flex items-center gap-3">
+                                <Avatar>
+                                  <AvatarImage src={u.avatarUrl || undefined} />
+                                  <AvatarFallback>{u.fullname.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-semibold">{u.fullname}</p>
+                                  <p className="text-sm text-muted-foreground">@{u.username}</p>
+                                </div>
+                              </div>
+                            <Button size="sm" onClick={() => sendFriendRequest(u)} disabled={sentRequests.includes(u.uid) || friends.some(f => f.uid === u.uid)}>
+                              {sentRequests.includes(u.uid) ? 'Sent' : 'Add'}
+                            </Button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-center">No users found.</p>
+                      )}
                     </div>
                   </ScrollArea>
                 </DialogContent>
