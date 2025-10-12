@@ -16,6 +16,8 @@ import {
   deleteDoc,
   writeBatch,
   getDoc,
+  Query,
+  or,
 } from "firebase/firestore";
 import {
   ref,
@@ -127,10 +129,41 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const handleSearch = async () => {
     if (!firestore || !searchQuery) return;
     const usersRef = collection(firestore, "users");
-    const q = query(usersRef, where("username", "==", searchQuery));
-    const querySnapshot = await getDocs(q);
-    const users = querySnapshot.docs.map(doc => doc.data() as User).filter(u => u.uid !== user.uid);
-    setSearchResults(users);
+
+    // Query for username starting with the search query
+    const usernameQuery = query(
+      usersRef,
+      where("username", ">=", searchQuery),
+      where("username", "<=", searchQuery + "\uf8ff")
+    );
+
+    // Query for fullname starting with the search query
+    const fullnameQuery = query(
+      usersRef,
+      where("fullname", ">=", searchQuery),
+      where("fullname", "<=", searchQuery + "\uf8ff")
+    );
+
+    const [usernameSnapshot, fullnameSnapshot] = await Promise.all([
+      getDocs(usernameQuery),
+      getDocs(fullnameQuery),
+    ]);
+
+    const usersMap = new Map<string, User>();
+    usernameSnapshot.docs.forEach(doc => {
+        const userData = doc.data() as User;
+        if(userData.uid !== user.uid) {
+            usersMap.set(userData.uid, userData);
+        }
+    });
+    fullnameSnapshot.docs.forEach(doc => {
+        const userData = doc.data() as User;
+        if(userData.uid !== user.uid) {
+            usersMap.set(userData.uid, userData);
+        }
+    });
+
+    setSearchResults(Array.from(usersMap.values()));
   };
 
   const sendFriendRequest = async (toUser: User) => {
@@ -413,7 +446,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                   <DialogTitle>Add Friends</DialogTitle>
                 </DialogHeader>
                 <div className="flex gap-2">
-                  <Input placeholder="Search by username" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <Input placeholder="Search by username or name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   <Button onClick={handleSearch}><Search/></Button>
                 </div>
                 <div className="space-y-2">
