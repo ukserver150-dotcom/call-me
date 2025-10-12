@@ -430,27 +430,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       {/* Sidebar */}
       <div className="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 shadow-sm">
-            <div className="flex items-center gap-4">
-                <Avatar className="h-10 w-10">
-                    <AvatarImage src={profile.avatarUrl || undefined} />
-                    <AvatarFallback>{profile.fullname.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-semibold text-base">{profile.fullname}</p>
-                    <p className="text-sm text-muted-foreground">@{profile.username}</p>
-                </div>
-            </div>
             <div className="flex items-center">
-              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-9 h-9">
-                    <Cog className="w-5 h-5"/>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl w-full">
-                  <Settings user={user} profile={profile} />
-                </DialogContent>
-              </Dialog>
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-9 h-9">
@@ -502,6 +482,26 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                       </div>
                   </DialogContent>
               </Dialog>
+              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="w-9 h-9">
+                    <Cog className="w-5 h-5"/>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl w-full">
+                  <Settings user={user} profile={profile} />
+                </DialogContent>
+              </Dialog>
+            </div>
+            <div className="flex items-center gap-4">
+                <Avatar className="h-10 w-10">
+                    <AvatarImage src={profile.avatarUrl || undefined} />
+                    <AvatarFallback>{profile.fullname.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="font-semibold text-base">{profile.fullname}</p>
+                    <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                </div>
             </div>
         </div>
         <ScrollArea className="flex-1">
