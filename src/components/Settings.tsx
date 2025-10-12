@@ -21,6 +21,7 @@ import { doc, updateDoc, collection, query, where, getDocs } from "firebase/fire
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { Switch } from "./ui/switch";
 import { useAuth } from "@/firebase/auth/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 
 
 const accountSchema = z.object({
@@ -39,6 +40,7 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAvatarPending, startAvatarTransition] = useTransition();
   const [isAccountPending, startAccountTransition] = useTransition();
+  const { theme, setTheme } = useTheme();
 
 
   const form = useForm<AccountFormValues>({
@@ -227,7 +229,7 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                     Allow others to see when you are online.
                                 </span>
                             </Label>
-                            <Switch id="online-status" />
+                            <Switch id="online-status" defaultChecked />
                         </div>
                         <div className="flex items-center justify-between">
                              <Label htmlFor="friend-requests" className="flex flex-col space-y-1">
@@ -236,7 +238,7 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                     Turn off to prevent others from sending you friend requests.
                                 </span>
                             </Label>
-                            <Switch id="friend-requests" />
+                            <Switch id="friend-requests" defaultChecked />
                         </div>
                     </CardContent>
                 </Card>
@@ -255,7 +257,11 @@ export default function Settings({ user, profile }: { user: FirebaseUser, profil
                                     Toggle between light and dark themes.
                                 </span>
                             </Label>
-                            <Switch id="dark-mode" />
+                            <Switch 
+                                id="dark-mode" 
+                                checked={theme === 'dark'}
+                                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                            />
                         </div>
                     </CardContent>
                 </Card>
