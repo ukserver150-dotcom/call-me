@@ -35,7 +35,7 @@ import { useDatabase } from "@/firebase/database/use-database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Mic, PhoneOff, Video, VideoOff, Send, LogIn, PlusCircle, UserPlus, Users, Search, Bell } from "lucide-react";
+import { Mic, PhoneOff, Video, VideoOff, Send, LogIn, PlusCircle, UserPlus, Users, Search, Bell, SettingsIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "./ui/separator";
@@ -48,6 +48,7 @@ import {
   type Friend,
 } from "@/lib/firebase/schema";
 import { type User as FirebaseUser } from "firebase/auth";
+import Settings from "./Settings";
 
 
 interface Message {
@@ -78,6 +79,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const [sentRequests, setSentRequests] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -435,57 +437,69 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                 </Avatar>
                 <h2 className="font-semibold">{profile.username}</h2>
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <UserPlus />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Friends</DialogTitle>
-                </DialogHeader>
-                <div className="flex gap-2">
-                  <Input placeholder="Search by username or name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                  <Button onClick={handleSearch}><Search/></Button>
-                </div>
-                <div className="space-y-2">
-                  {searchResults.map(u => (
-                    <div key={u.uid} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold">{u.fullname}</p>
-                        <p className="text-sm text-muted-foreground">@{u.username}</p>
-                      </div>
-                      <Button size="sm" onClick={() => sendFriendRequest(u)}>Send Request</Button>
-                    </div>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Dialog>
+            <div className="flex items-center">
+              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell />
-                        {friendRequests.length > 0 && <Badge className="absolute top-0 right-0 h-4 w-4 p-0 justify-center">{friendRequests.length}</Badge>}
-                    </Button>
+                  <Button variant="ghost" size="icon">
+                    <SettingsIcon />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl w-full">
+                  <Settings user={user} profile={profile} />
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <UserPlus />
+                  </Button>
                 </DialogTrigger>
                 <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Friend Requests</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                        {friendRequests.map(req => (
-                            <div key={req.from} className="flex justify-between items-center">
-                                <p>{req.username}</p>
-                                <div className="flex gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => handleFriendRequest(req, false)}>Decline</Button>
-                                    <Button size="sm" onClick={() => handleFriendRequest(req, true)}>Accept</Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                  <DialogHeader>
+                    <DialogTitle>Add Friends</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex gap-2">
+                    <Input placeholder="Search by username or name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    <Button onClick={handleSearch}><Search/></Button>
+                  </div>
+                  <div className="space-y-2">
+                    {searchResults.map(u => (
+                      <div key={u.uid} className="flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold">{u.fullname}</p>
+                          <p className="text-sm text-muted-foreground">@{u.username}</p>
+                        </div>
+                        <Button size="sm" onClick={() => sendFriendRequest(u)}>Send Request</Button>
+                      </div>
+                    ))}
+                  </div>
                 </DialogContent>
-            </Dialog>
+              </Dialog>
+              <Dialog>
+                  <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="relative">
+                          <Bell />
+                          {friendRequests.length > 0 && <Badge className="absolute top-0 right-0 h-4 w-4 p-0 justify-center">{friendRequests.length}</Badge>}
+                      </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                      <DialogHeader>
+                          <DialogTitle>Friend Requests</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-2">
+                          {friendRequests.map(req => (
+                              <div key={req.from} className="flex justify-between items-center">
+                                  <p>{req.username}</p>
+                                  <div className="flex gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => handleFriendRequest(req, false)}>Decline</Button>
+                                      <Button size="sm" onClick={() => handleFriendRequest(req, true)}>Accept</Button>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </DialogContent>
+              </Dialog>
+            </div>
         </div>
         <ScrollArea className="flex-1">
           {friends.map(friend => (
