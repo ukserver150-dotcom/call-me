@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -45,7 +46,11 @@ export default function LoginPage() {
       router.push("/");
     } catch (error: any) {
       console.error("Error signing in:", error);
-      toast({ variant: "destructive", title: "Sign In Failed", description: error.message });
+      if (error.code === 'auth/invalid-credential') {
+        toast({ variant: "destructive", title: "Sign In Failed", description: "Invalid email or password. Please try again." });
+      } else {
+        toast({ variant: "destructive", title: "Sign In Failed", description: error.message });
+      }
     } finally {
       setLoading(false);
     }
@@ -60,16 +65,16 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
             <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormItem className="relative">
                     <FormControl>
-                        <Input placeholder="name@example.com" {...field} />
+                        <Input placeholder="name@example.com" {...field} id="email" className="peer placeholder-transparent"/>
                     </FormControl>
+                    <FormLabel htmlFor="email" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Email</FormLabel>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -78,11 +83,11 @@ export default function LoginPage() {
                 control={form.control}
                 name="password"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormItem className="relative">
                     <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input type="password" placeholder="••••••••" {...field} id="password" className="peer placeholder-transparent"/>
                     </FormControl>
+                    <FormLabel htmlFor="password" className="absolute left-0 -top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base">Password</FormLabel>
                     <FormMessage />
                     </FormItem>
                 )}
