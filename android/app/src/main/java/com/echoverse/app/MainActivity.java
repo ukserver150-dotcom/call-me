@@ -1,0 +1,17 @@
+package com.echoverse.app;
+
+import android.os.Bundle;
+import android.webkit.WebView;
+
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    // Disable overscroll bounce effect
+    WebView webView = getBridge().getWebView();
+    webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
+  }
+}
