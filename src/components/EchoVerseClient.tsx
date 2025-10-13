@@ -59,6 +59,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const [searchQuery, setSearchQuery] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -67,18 +68,13 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
 
-  const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  };
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   const roomId = activeChat ? [user.uid, activeChat.uid].sort().join('_') : null;
 
@@ -138,40 +134,40 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       const usersRef = collection(firestore, "users");
       const lowerCaseQuery = searchQuery.toLowerCase();
   
-      const usernameQuery = query(
-        usersRef,
+      // Query for username
+      const usernameQuery = query(usersRef, 
         where("username", ">=", lowerCaseQuery),
         where("username", "<=", lowerCaseQuery + "\uf8ff")
       );
-  
-      const fullnameQuery = query(
-        usersRef,
+      
+      // Query for fullname
+      const fullnameQuery = query(usersRef, 
         where("fullname", ">=", searchQuery),
         where("fullname", "<=", searchQuery + "\uf8ff")
       );
-  
+
       try {
         const [usernameSnapshot, fullnameSnapshot] = await Promise.all([
-          getDocs(usernameQuery),
-          getDocs(fullnameQuery),
+            getDocs(usernameQuery),
+            getDocs(fullnameQuery)
         ]);
-  
+        
         const usersMap = new Map<string, User>();
-  
-        usernameSnapshot.docs.forEach(doc => {
-          const userData = doc.data() as User;
-          if (userData.uid !== user.uid) {
-            usersMap.set(userData.uid, userData);
-          }
+        
+        usernameSnapshot.forEach((doc) => {
+            const userData = doc.data() as User;
+            if (userData.uid !== user.uid) {
+                usersMap.set(userData.uid, userData);
+            }
         });
-  
-        fullnameSnapshot.docs.forEach(doc => {
-          const userData = doc.data() as User;
-          if (userData.uid !== user.uid) {
-            usersMap.set(userData.uid, userData);
-          }
+
+        fullnameSnapshot.forEach((doc) => {
+            const userData = doc.data() as User;
+            if (userData.uid !== user.uid) {
+                usersMap.set(userData.uid, userData);
+            }
         });
-  
+
         setSearchResults(Array.from(usersMap.values()));
       } catch (error) {
         console.error("Error searching for users:", error);
@@ -248,13 +244,19 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       setMessages([]);
       return;
     }
-    const q = query(collection(firestore, 'rooms', roomId, 'messages'), orderBy('createdAt'));
+    setIsChatLoading(true);
+    const q = query(collection(firestore, 'rooms', roomId, 'messages'), orderBy('createdAt', 'asc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const msgs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(msgs);
+      setIsChatLoading(false);
+    }, (error) => {
+        console.error("Error fetching messages:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to load messages." });
+        setIsChatLoading(false);
     });
     return () => unsubscribe();
-  }, [roomId, firestore]);
+  }, [roomId, firestore, toast]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,6 +267,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       createdAt: serverTimestamp(),
     });
     setNewMessage("");
+    scrollToBottom();
   };
   
   return (
@@ -425,23 +428,35 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                   </div>
                 </header>
                 <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-                  <div className="space-y-4">
-                    {messages.map(msg => (
-                      <div key={msg.id} className={`flex items-end gap-2 ${msg.from === user.uid ? 'justify-end' : 'justify-start'}`}>
-                        {msg.from !== user.uid && (
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={undefined} />
-                            <AvatarFallback className="text-xs">{activeChat.username.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div className={`rounded-lg p-3 max-w-md ${msg.from === user.uid ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                          <p className="text-sm">{msg.text}</p>
-                          <p className="text-xs text-right mt-1 opacity-70">{new Date(msg.createdAt?.toDate()).toLocaleTimeString()}</p>
+                  {isChatLoading ? (
+                     <div className="flex justify-center items-center h-full">
+                        <LoadingSpinner />
+                     </div>
+                  ) : messages.length > 0 ? (
+                    <div className="space-y-4">
+                      {messages.map(msg => (
+                        <div key={msg.id} className={`flex items-end gap-2 ${msg.from === user.uid ? 'justify-end' : 'justify-start'}`}>
+                          {msg.from !== user.uid && (
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={undefined} />
+                              <AvatarFallback className="text-xs">{activeChat.username.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                          )}
+                          <div className={`rounded-lg p-3 max-w-md break-words ${msg.from === user.uid ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted rounded-bl-none'}`}>
+                            <p className="text-sm">{msg.text}</p>
+                            <p className="text-xs text-right mt-1 opacity-70">{msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                        <MessageSquare size={40} className="mb-4" />
+                        <p className="font-semibold">No messages yet.</p>
+                        <p className="text-sm">Be the first to say something!</p>
+                    </div>
+                  )}
                 </ScrollArea>
                 <footer className="p-4 border-t bg-background">
                   <form onSubmit={sendMessage} className="flex gap-2 items-center">
@@ -475,3 +490,5 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     </>
   );
 }
+
+    
