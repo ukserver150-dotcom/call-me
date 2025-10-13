@@ -37,7 +37,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCallStore } from "@/hooks/use-call-store";
 import CallModal from "./call/CallModal";
-import { Mic, Phone, PhoneOff, UserPlus, BellRing, Cog, PanelLeft, MessageSquare, Search } from "lucide-react";
+import { Mic, Phone, PhoneOff, UserPlus, BellRing, Cog, PanelLeft, MessageSquare, Search, Send } from "lucide-react";
 import { ref, onValue, off } from "firebase/database";
 
 
@@ -64,6 +64,21 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const firestore = useFirestore();
   const db = useDatabase();
   const { startCall, setIncomingCall } = useCallStore();
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo({
+        top: scrollAreaRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const roomId = activeChat ? [user.uid, activeChat.uid].sort().join('_') : null;
 
@@ -123,14 +138,12 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
       const usersRef = collection(firestore, "users");
       const lowerCaseQuery = searchQuery.toLowerCase();
   
-      // Query for username
       const usernameQuery = query(
         usersRef,
         where("username", ">=", lowerCaseQuery),
         where("username", "<=", lowerCaseQuery + "\uf8ff")
       );
   
-      // Query for fullname
       const fullnameQuery = query(
         usersRef,
         where("fullname", ">=", searchQuery),
@@ -411,7 +424,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                     </TooltipProvider>
                   </div>
                 </header>
-                <ScrollArea className="flex-1 p-4">
+                <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                   <div className="space-y-4">
                     {messages.map(msg => (
                       <div key={msg.id} className={`flex items-end gap-2 ${msg.from === user.uid ? 'justify-end' : 'justify-start'}`}>
@@ -427,6 +440,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                         </div>
                       </div>
                     ))}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
                 <footer className="p-4 border-t bg-background">
