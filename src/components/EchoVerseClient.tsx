@@ -37,7 +37,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCallStore } from "@/hooks/use-call-store";
 import CallModal from "./call/CallModal";
-import { Mic, Phone, PhoneOff, UserPlus, BellRing, Cog, PanelLeft, MessageSquare, Search, Send } from "lucide-react";
+import { Mic, Phone, PhoneOff, UserPlus, BellRing, Cog, PanelLeft, MessageSquare, Search, Send, SettingsIcon } from "lucide-react";
 import { ref, onValue, off } from "firebase/database";
 
 
@@ -276,9 +276,9 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
 
       <Sidebar side="left" collapsible="icon" variant="sidebar">
         <SidebarHeader>
-             <div className="flex items-center justify-between">
+             <div className="flex items-center justify-between p-2">
                 <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-10 w-10">
                         <AvatarImage src={profile.avatarUrl || undefined} />
                         <AvatarFallback>{profile.fullname.charAt(0)}</AvatarFallback>
                     </Avatar>
@@ -287,87 +287,99 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                         <p className="text-sm text-sidebar-primary-foreground/80">@{profile.username}</p>
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" className="md:hidden"><PanelLeft /></Button>
+                <div className="flex items-center">
+                    <Dialog>
+                        <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full transition-transform hover:scale-110">
+                                        <UserPlus />
+                                    </Button>
+                                </DialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Add Friends</p></TooltipContent>
+                        </Tooltip>
+                        </TooltipProvider>
+                        <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Add Friends</DialogTitle>
+                        </DialogHeader>
+                        <div className="flex gap-2">
+                            <Input placeholder="Search by username or name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                            <Button><Search/></Button>
+                        </div>
+                        <ScrollArea className="h-64">
+                            <div className="space-y-4 py-4">
+                            {isSearching ? (
+                                <div className="flex justify-center items-center h-full">
+                                <LoadingSpinner />
+                                </div>
+                            ) : searchResults.length > 0 ? (
+                                searchResults.map(u => (
+                                <div key={u.uid} className="flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar>
+                                        <AvatarImage src={u.avatarUrl || undefined} />
+                                        <AvatarFallback>{u.fullname.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                        <p className="font-semibold text-base">{u.fullname}</p>
+                                        <p className="text-sm text-muted-foreground">@{u.username}</p>
+                                        </div>
+                                    </div>
+                                    <Button size="sm" onClick={() => sendFriendRequest(u)} disabled={sentRequests.includes(u.uid) || friends.some(f => f.uid === u.uid)}>
+                                    {sentRequests.includes(u.uid) ? 'Sent' : 'Add'}
+                                    </Button>
+                                </div>
+                                ))
+                            ) : (
+                                <p className="text-muted-foreground text-center">No users found.</p>
+                            )}
+                            </div>
+                        </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog>
+                       <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full transition-transform hover:scale-110">
+                                        <BellRing />
+                                        {friendRequests.length > 0 && <Badge className="absolute top-1 right-1 h-5 w-5 p-0 justify-center">{friendRequests.length}</Badge>}
+                                    </Button>
+                                </DialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Friend Requests</p></TooltipContent>
+                        </Tooltip>
+                        </TooltipProvider>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Friend Requests</DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="h-64">
+                                <div className="space-y-4 py-4">
+                                    {friendRequests.map(req => (
+                                        <div key={req.from} className="flex justify-between items-center">
+                                            <p>{req.fullname} (@{req.username})</p>
+                                            <div className="flex gap-2">
+                                                <Button size="sm" variant="outline" onClick={() => handleFriendRequest(req, false)}>Decline</Button>
+                                                <Button size="sm" onClick={() => handleFriendRequest(req, true)}>Accept</Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {friendRequests.length === 0 && <p className="text-muted-foreground text-center">No new requests.</p>}
+                                </div>
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarMenu>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <UserPlus className="mr-2"/> Add Friends
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Friends</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex gap-2">
-                    <Input placeholder="Search by username or name" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                    <Button><Search/></Button>
-                  </div>
-                   <ScrollArea className="h-64">
-                    <div className="space-y-4 py-4">
-                      {isSearching ? (
-                        <div className="flex justify-center items-center h-full">
-                          <LoadingSpinner />
-                        </div>
-                      ) : searchResults.length > 0 ? (
-                        searchResults.map(u => (
-                          <div key={u.uid} className="flex justify-between items-center">
-                             <div className="flex items-center gap-3">
-                                <Avatar>
-                                  <AvatarImage src={u.avatarUrl || undefined} />
-                                  <AvatarFallback>{u.fullname.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-semibold text-base">{u.fullname}</p>
-                                  <p className="text-sm text-muted-foreground">@{u.username}</p>
-                                </div>
-                              </div>
-                            <Button size="sm" onClick={() => sendFriendRequest(u)} disabled={sentRequests.includes(u.uid) || friends.some(f => f.uid === u.uid)}>
-                              {sentRequests.includes(u.uid) ? 'Sent' : 'Add'}
-                            </Button>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-center">No users found.</p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                  <DialogTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-start relative">
-                        <BellRing className="mr-2"/> Friend Requests
-                        {friendRequests.length > 0 && <Badge className="absolute top-1 right-2 h-5 w-5 p-0 justify-center">{friendRequests.length}</Badge>}
-                      </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                      <DialogHeader>
-                          <DialogTitle>Friend Requests</DialogTitle>
-                      </DialogHeader>
-                      <ScrollArea className="h-64">
-                        <div className="space-y-4 py-4">
-                            {friendRequests.map(req => (
-                                <div key={req.from} className="flex justify-between items-center">
-                                    <p>{req.fullname} (@{req.username})</p>
-                                    <div className="flex gap-2">
-                                        <Button size="sm" variant="outline" onClick={() => handleFriendRequest(req, false)}>Decline</Button>
-                                        <Button size="sm" onClick={() => handleFriendRequest(req, true)}>Accept</Button>
-                                    </div>
-                                </div>
-                            ))}
-                            {friendRequests.length === 0 && <p className="text-muted-foreground text-center">No new requests.</p>}
-                        </div>
-                      </ScrollArea>
-                  </DialogContent>
-              </Dialog>
-          </SidebarMenu>
-
-          <Separator className="my-4 bg-sidebar-border" />
+          <Separator className="my-2 bg-sidebar-border" />
           
           <SidebarMenu>
             <SidebarMenuItem>
@@ -390,8 +402,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
         <SidebarFooter>
             <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <DialogTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start">
-                    <Cog className="mr-2" /> Settings
+                <Button variant="ghost" className="w-full justify-start h-12 transition-transform hover:scale-105">
+                    <SettingsIcon className="mr-2" /> Settings
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl w-full">
@@ -418,7 +430,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={handleStartCall}>
+                                <Button variant="ghost" size="icon" onClick={handleStartCall} className="rounded-full h-10 w-10 transition-transform hover:scale-110">
                                     <Phone />
                                 </Button>
                             </TooltipTrigger>

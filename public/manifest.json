@@ -1,17 +1,30 @@
 {
-  "name": "Call Me Alpha",
-  "short_name": "Alpha",
-  "description": "A real-time chat and call app powered by Firebase.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0d6efd",
-  "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+    "name": "Alpha",
+      "short_name": "Alpha",
+        "description": "Real-time chat and calling app built with Firebase and Next.js",
+          "start_url": "/",
+            "display": "standalone",
+              "background_color": "#ffffff",
+                "theme_color": "#0d6efd",
+                  "orientation": "portrait",
+                    "icons": [
+                        {
+                              "src": "/icons/icon-512.png",
+                                    "sizes": "512x512",
+                                          "type": "image/png"
+                                              },
+                                                  {
+                                                        "src": "/icons/icon-512-maskable.png",
+                                                              "sizes": "512x512",
+                                                                    "type": "image/png",
+                                                                          "purpose": "maskable"
+                                                                              },
+                                                                                  {
+                                                                                        "src": "/icons/icon-512-monochrome.png",
+                                                                                              "sizes": "512x512",
+                                                                                                    "type": "image/png",
+                                                                                                          "purpose": "monochrome"
+                                                                                                              }
+                                                                                                                ]
+                                                                                                                }
 }
