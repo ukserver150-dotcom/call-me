@@ -1,12 +1,12 @@
 {
-  "name": "Call Me",
+  "name": "CallMe",
   "short_name": "CallMe",
-  "description": "Realtime chat and audio calling app with username search and friend add.",
+  "description": "Real-time calling and messaging app.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#0d6efd",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
