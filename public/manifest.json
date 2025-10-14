@@ -1,7 +1,7 @@
 {
   "name": "CallMe",
   "short_name": "CallMe",
-  "description": "Real-time calling and messaging app.",
+  "description": "Realtime chat and calling app",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
