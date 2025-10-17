@@ -17,8 +17,8 @@ import {
 } from "firebase/firestore";
 import {
   ref as storageRef,
-  uploadBytes,
   getDownloadURL,
+  uploadBytesResumable,
 } from "firebase/storage";
 import { useFirestore } from "@/firebase/firestore/use-firestore";
 import { useStorage } from "@/firebase/storage/use-storage";
@@ -49,6 +49,7 @@ import { ref, onValue, off } from "firebase/database";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import Image from "next/image";
+import { Progress } from "./ui/progress";
 
 
 export default function EchoVerseClient({ user, profile }: { user: FirebaseUser, profile: User }) {
@@ -64,6 +65,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const [isSearching, setIsSearching] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
 
   const { toast } = useToast();
@@ -282,37 +284,50 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     setNewMessage((prev) => prev + emojiData.emoji);
   };
   
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !roomId || !storage || !firestore) return;
-  
+
     setIsUploading(true);
-    try {
-      const fileType = file.type.split('/')[0];
-      let messageType: Message['type'] = 'image';
-      if (fileType === 'video') messageType = 'video';
-      else if (file.type === 'image/gif') messageType = 'gif';
-  
-      const sRef = storageRef(storage, `chat-media/${roomId}/${Date.now()}-${file.name}`);
-      const uploadResult = await uploadBytes(sRef, file);
-      const downloadURL = await getDownloadURL(uploadResult.ref);
-  
-      await addDoc(collection(firestore, 'rooms', roomId, 'messages'), {
-        from: user.uid,
-        text: '',
-        type: messageType,
-        mediaUrl: downloadURL,
-        createdAt: serverTimestamp(),
-      });
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload your file." });
-    } finally {
-      setIsUploading(false);
-      // Reset file input
-      if(fileInputRef.current) fileInputRef.current.value = "";
-    }
+    setUploadProgress(0);
+
+    const fileType = file.type.split('/')[0];
+    let messageType: Message['type'] = 'image';
+    if (fileType === 'video') messageType = 'video';
+    else if (file.type === 'image/gif') messageType = 'gif';
+
+    const sRef = storageRef(storage, `chat-media/${roomId}/${Date.now()}-${file.name}`);
+    const uploadTask = uploadBytesResumable(sRef, file);
+
+    uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+        },
+        (error) => {
+            console.error("Error uploading file:", error);
+            toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload your file." });
+            setIsUploading(false);
+        },
+        () => {
+            getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+                await addDoc(collection(firestore, 'rooms', roomId, 'messages'), {
+                    from: user.uid,
+                    text: '',
+                    type: messageType,
+                    mediaUrl: downloadURL,
+                    createdAt: serverTimestamp(),
+                });
+            }).finally(() => {
+                setIsUploading(false);
+                setUploadProgress(0);
+                if(fileInputRef.current) fileInputRef.current.value = "";
+            });
+        }
+    );
   };
+
 
   const renderMessageContent = (msg: Message) => {
     switch (msg.type) {
@@ -552,6 +567,12 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                   )}
                 </ScrollArea>
                 <footer className="p-4 border-t bg-background">
+                  {isUploading && (
+                        <div className="flex items-center gap-2 mb-2">
+                           <Progress value={uploadProgress} className="w-full" />
+                           <span className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</span>
+                        </div>
+                    )}
                   <form onSubmit={sendMessage} className="flex gap-2 items-center">
                         <Input
                             type="file"
@@ -559,6 +580,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                             onChange={handleFileChange}
                             className="hidden"
                             accept="image/*,video/*,image/gif"
+                            disabled={isUploading}
                         />
                         <TooltipProvider>
                             <Tooltip>
@@ -573,7 +595,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
 
                         <Popover>
                             <PopoverTrigger asChild>
-                                <Button type="button" variant="ghost" size="icon">
+                                <Button type="button" variant="ghost" size="icon" disabled={isUploading}>
                                     <Smile />
                                 </Button>
                             </PopoverTrigger>
@@ -585,7 +607,7 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                       <Input 
                           value={newMessage} 
                           onChange={(e) => setNewMessage(e.target.value)} 
-                          placeholder={isUploading ? "Uploading..." : "Type a message..."}
+                          placeholder={isUploading ? `Uploading... ${Math.round(uploadProgress)}%` : "Type a message..."}
                           className="flex-1"
                           disabled={isUploading}
                       />
