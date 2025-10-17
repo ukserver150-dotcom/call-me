@@ -21,3 +21,12 @@ export interface Friend {
     fullname: string;
     since: Timestamp;
 }
+
+export interface Message {
+  id: string;
+  from: string;
+  type: 'text' | 'image' | 'video' | 'gif';
+  text: string; // for text messages, or as a caption
+  mediaUrl?: string; // for image, video, gif
+  createdAt: Timestamp;
+}

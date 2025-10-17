@@ -15,7 +15,13 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/storage";
 import { useFirestore } from "@/firebase/firestore/use-firestore";
+import { useStorage } from "@/firebase/storage/use-storage";
 import { useDatabase } from "@/firebase/database/use-database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +35,7 @@ import {
   type User,
   type FriendRequest,
   type Friend,
+  type Message
 } from "@/lib/firebase/schema";
 import { type User as FirebaseUser } from "firebase/auth";
 import Settings from "./Settings";
@@ -37,16 +44,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCallStore } from "@/hooks/use-call-store";
 import CallModal from "./call/CallModal";
-import { Mic, Phone, PhoneOff, UserPlus, BellRing, Cog, PanelLeft, MessageSquare, Search, Send, SettingsIcon } from "lucide-react";
+import { Mic, Phone, PhoneOff, UserPlus, BellRing, Cog, PanelLeft, MessageSquare, Search, Send, SettingsIcon, Paperclip, Smile } from "lucide-react";
 import { ref, onValue, off } from "firebase/database";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import Image from "next/image";
 
-
-interface Message {
-  id: string;
-  from: string;
-  text: string;
-  createdAt: Timestamp;
-}
 
 export default function EchoVerseClient({ user, profile }: { user: FirebaseUser, profile: User }) {
   const [activeChat, setActiveChat] = useState<Friend | null>(null);
@@ -60,13 +63,17 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const { toast } = useToast();
   const firestore = useFirestore();
+  const storage = useStorage();
   const db = useDatabase();
   const { startCall, setIncomingCall } = useCallStore();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -264,10 +271,84 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     await addDoc(collection(firestore, 'rooms', roomId, 'messages'), {
       from: user.uid,
       text: newMessage,
+      type: 'text',
       createdAt: serverTimestamp(),
     });
     setNewMessage("");
     scrollToBottom();
+  };
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
+  };
+  
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !roomId || !storage || !firestore) return;
+  
+    setIsUploading(true);
+    try {
+      const fileType = file.type.split('/')[0];
+      let messageType: Message['type'] = 'image';
+      if (fileType === 'video') messageType = 'video';
+      else if (file.type === 'image/gif') messageType = 'gif';
+  
+      const sRef = storageRef(storage, `chat-media/${roomId}/${Date.now()}-${file.name}`);
+      const uploadResult = await uploadBytes(sRef, file);
+      const downloadURL = await getDownloadURL(uploadResult.ref);
+  
+      await addDoc(collection(firestore, 'rooms', roomId, 'messages'), {
+        from: user.uid,
+        text: '',
+        type: messageType,
+        mediaUrl: downloadURL,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload your file." });
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if(fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const renderMessageContent = (msg: Message) => {
+    switch (msg.type) {
+        case 'image':
+        return (
+            <Image
+                src={msg.mediaUrl!}
+                alt="Sent image"
+                width={300}
+                height={300}
+                className="rounded-lg object-cover cursor-pointer"
+                onClick={() => window.open(msg.mediaUrl, '_blank')}
+            />
+        );
+        case 'video':
+        return (
+            <video
+                src={msg.mediaUrl!}
+                controls
+                className="rounded-lg max-w-xs"
+            />
+        );
+        case 'gif':
+            return (
+                <Image
+                    src={msg.mediaUrl!}
+                    alt="Sent GIF"
+                    width={250}
+                    height={200}
+                    unoptimized
+                    className="rounded-lg object-cover"
+                />
+            );
+      default:
+        return <p className="text-sm">{msg.text}</p>;
+    }
   };
   
   return (
@@ -454,8 +535,8 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                               <AvatarFallback className="text-xs">{activeChat.username.charAt(0)}</AvatarFallback>
                             </Avatar>
                           )}
-                          <div className={`rounded-lg p-3 max-w-md break-words ${msg.from === user.uid ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted rounded-bl-none'}`}>
-                            <p className="text-sm">{msg.text}</p>
+                          <div className={`rounded-lg p-2 max-w-md break-words ${msg.from === user.uid ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted rounded-bl-none'}`}>
+                            {renderMessageContent(msg)}
                             <p className="text-xs text-right mt-1 opacity-70">{msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</p>
                           </div>
                         </div>
@@ -472,13 +553,43 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
                 </ScrollArea>
                 <footer className="p-4 border-t bg-background">
                   <form onSubmit={sendMessage} className="flex gap-2 items-center">
+                        <Input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            className="hidden"
+                            accept="image/*,video/*,image/gif"
+                        />
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                        <Paperclip />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Attach File</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon">
+                                    <Smile />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 border-0">
+                                <EmojiPicker onEmojiClick={handleEmojiClick} />
+                            </PopoverContent>
+                        </Popover>
+                      
                       <Input 
                           value={newMessage} 
                           onChange={(e) => setNewMessage(e.target.value)} 
-                          placeholder="Type a message..."
+                          placeholder={isUploading ? "Uploading..." : "Type a message..."}
                           className="flex-1"
+                          disabled={isUploading}
                       />
-                      <Button type="submit" size="icon" disabled={!newMessage.trim()}>
+                      <Button type="submit" size="icon" disabled={!newMessage.trim() || isUploading}>
                           <Send/>
                           <span className="sr-only">Send</span>
                       </Button>
@@ -502,5 +613,3 @@ export default function EchoVerseClient({ user, profile }: { user: FirebaseUser,
     </>
   );
 }
-
-    
